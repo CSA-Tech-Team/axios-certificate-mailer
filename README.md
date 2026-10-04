@@ -15,6 +15,8 @@ window.fillCertificate({
 
 The same API is available as `window.Certificate.setValues(...)`. Current values can be read with `window.Certificate.getValues()` and cleared with `window.Certificate.reset()`.
 
+Participant and college text automatically shrink independently when needed, keeping long values within their underline. If a script changes a field directly, dispatch an `input` event or call `window.Certificate.refit()` afterward.
+
 The fields can also be populated through query parameters:
 
 ```text

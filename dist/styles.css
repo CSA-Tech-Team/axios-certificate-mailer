@@ -223,7 +223,10 @@ body {
   color: var(--teal);
   font: inherit;
   line-height: 1;
+  overflow: hidden;
   text-align: center;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .certificate-field--name {
