@@ -36,6 +36,9 @@ Computational Sciences Association
 PSG College of Technology
 """
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+DOTENV_ASSIGNMENT = re.compile(
+    r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$"
+)
 
 
 class ParticipantDataError(ValueError):
@@ -159,6 +162,24 @@ def create_email_message(
         filename=pdf_path.name,
     )
     return message
+
+
+def load_dotenv(path: Path = PROJECT_ROOT / ".env") -> None:
+    """Load simple KEY=VALUE entries from a local .env without overwriting shell values."""
+    if not path.is_file():
+        return
+
+    for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = DOTENV_ASSIGNMENT.fullmatch(raw_line)
+        if not match:
+            raise RuntimeError(f"Invalid .env entry on line {line_number}.")
+        key, value = match.groups()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
 
 
 def calculate_fitted_font_size(
@@ -633,6 +654,7 @@ def run(args: argparse.Namespace) -> int:
     app_password = ""
     send_log = SendLog(args.send_log)
     if args.send:
+        load_dotenv()
         sender_email, app_password = get_smtp_credentials(
             args.sender_email, args.app_password_env
         )

@@ -17,6 +17,7 @@ from certificate_mailer import (
     calculate_fitted_font_size,
     create_email_message,
     get_smtp_credentials,
+    load_dotenv,
     load_participants,
     safe_certificate_filename,
     send_with_retry,
@@ -138,6 +139,23 @@ class CertificateMailerTests(unittest.TestCase):
             sender, password = get_smtp_credentials(None, "GMAIL_APP_PASSWORD")
         self.assertEqual(sender, "sender@gmail.com")
         self.assertEqual(password, "abcdefghijklmnop")
+
+    def test_dotenv_loads_credentials_without_overriding_shell_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            dotenv = Path(directory) / ".env"
+            dotenv.write_text(
+                'GMAIL_SENDER_EMAIL="dotenv@gmail.com"\n'
+                'GMAIL_APP_PASSWORD="abcd efgh ijkl mnop"\n',
+                encoding="utf-8",
+            )
+            with patch.dict(
+                os.environ,
+                {"GMAIL_SENDER_EMAIL": "shell@gmail.com"},
+                clear=True,
+            ):
+                load_dotenv(dotenv)
+                self.assertEqual(os.environ["GMAIL_SENDER_EMAIL"], "shell@gmail.com")
+                self.assertEqual(os.environ["GMAIL_APP_PASSWORD"], "abcd efgh ijkl mnop")
 
     @patch("certificate_mailer.smtplib.SMTP_SSL")
     def test_smtp_sender_authenticates_and_sends_message(self, smtp_ssl):

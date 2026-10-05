@@ -45,14 +45,14 @@ PDFs are drawn directly with ReportLab. No browser, Chromium installation, or li
 
 1. Turn on 2-Step Verification for the sending Google account.
 2. In that account's Google Account security settings, create an **App password** (for example, named `DTP Certificate Mailer`).
-3. Set the sender address and generated app password in your shell. Do not put the password in a CSV, source file, or command-line argument.
+3. Create a `.env` file beside `certificate_mailer.py` with the sender address and generated app password. Do not put the password in a CSV, source file, or command-line argument.
 
-```bash
-export GMAIL_SENDER_EMAIL="your-account@gmail.com"
-export GMAIL_APP_PASSWORD="your-16-character-app-password"
+```dotenv
+GMAIL_SENDER_EMAIL="your-account@gmail.com"
+GMAIL_APP_PASSWORD="your-16-character-app-password"
 ```
 
-The script uses `smtp.gmail.com` over SSL and authenticates with these values; it does not use the Gmail API, Google Cloud project, OAuth client, or browser sign-in. If `GMAIL_APP_PASSWORD` is omitted when running interactively, it is requested with a hidden prompt instead.
+The script loads this gitignored `.env` only when `--send` is used. Values already present in the shell take precedence. It uses `smtp.gmail.com` over SSL and does not use the Gmail API, Google Cloud project, OAuth client, or browser sign-in. If `GMAIL_APP_PASSWORD` is omitted when running interactively, it is requested with a hidden prompt instead.
 
 ### 3. Add participants
 
