@@ -1,6 +1,6 @@
-# DTP certificate — Frame 47
+# DTP certificate 
 
-Static HTML implementation of Figma Frame 47 with script-fillable participant and college fields.
+Static HTML implementation of Figma participation certificate with script-fillable participant and college fields.
 
 ## Autofill
 
