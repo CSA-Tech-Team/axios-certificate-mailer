@@ -1,0 +1,14 @@
+{
+  "participants": [
+    {
+      "name": "Aarav Kumar",
+      "college": "PSG College of Technology",
+      "email": "aarav@example.com"
+    },
+    {
+      "name": "Ananya Venkateshwaran",
+      "college": "Sri Ramakrishna Institute of Technology and Applied Sciences",
+      "email": "ananya@example.com"
+    }
+  ]
+}

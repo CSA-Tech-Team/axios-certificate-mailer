@@ -1,0 +1,2 @@
+reportlab>=4.4
+svglib>=1.5

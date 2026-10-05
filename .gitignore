@@ -1,1 +1,10 @@
 .DS_Store
+.env
+.env.*
+participants.csv
+participants.json
+generated-certificates/
+send-log.csv
+*.pyc
+__pycache__/
+.venv/

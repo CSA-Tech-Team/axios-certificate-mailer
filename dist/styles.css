@@ -1,3 +1,27 @@
+@font-face {
+  font-family: "Adamina";
+  src: url("assets/Adamina-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Italianno";
+  src: url("assets/Italianno-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  src: url("assets/BeVietnamPro-ExtraBold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
   --paper: #fffaf3;
@@ -257,6 +281,7 @@ body {
 }
 
 .signature {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -265,6 +290,20 @@ body {
   line-height: 1;
   text-align: center;
   white-space: nowrap;
+}
+
+.signature-image {
+  position: absolute;
+  bottom: 0.62cqw;
+  width: 88%;
+  height: 6.15cqw;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.signature-image--faculty-advisor {
+  width: 92%;
 }
 
 .signature-line {
