@@ -134,7 +134,7 @@ The password is only ever read from the environment.
 ### Workflow
 
 ```
-python -m mailqueue enqueue --campaign march --csv people.csv --subject "Hi {{name}}" --template templates/thank-you.hbs --banner banner.png [--text-template email-text.hbs]
+python -m mailqueue enqueue --campaign axios26 --csv participants.csv --subject "Your AXIOS '26 Certificate of Participation" --template templates/email.hbs --text-template templates/email-text.hbs
 python -m mailqueue send --dry-run                     # render everything, send nothing
 python -m mailqueue send --test-to you@psgtech.ac.in   # one real sample; queue untouched
 python -m mailqueue send [--campaign march] [--limit N]
@@ -150,8 +150,14 @@ python -m mailqueue status [--campaign march]
 - **Banner image.** The banner is supplied separately: `--banner banner.png` (png/jpg/gif) embeds it in
   the email, and the template shows it with `<img src="cid:banner">`. It is snapshotted with the template
   (changing it later needs `--allow-template-change`). `enqueue` refuses a template that uses `cid:banner`
-  without `--banner`. Nothing needs to be hosted online. `templates/thank-you.hbs` is a ready example
-  (banner on top, two lines of copy: edit them where marked LINE 1 / LINE 2).
+  without `--banner`. Nothing needs to be hosted online.
+- **AXIOS '26 templates** (`templates/`), all taken from the existing certificate project, only in `.hbs` form:
+  - `certificate.hbs` is `dist/index.html` with `value="{{name}}"` and `value="{{college}}"` on the two
+    fields. It uses the existing `dist/styles.css`, `dist/script.js` (auto-fit) and `dist/assets/`, so the
+    design is unchanged; render it into a folder beside `dist/` so the `../dist/` paths resolve.
+  - `email.hbs` / `email-text.hbs` are `certificate_mailer.py`'s default email body (`{name}` → `{{name}}`).
+    The CSV needs a `name` column. mailqueue does not attach files, so the certificate PDF is not sent by
+    this path.
 - **Campaigns.** The key is `(campaign, email)`: the same person can be in a later campaign,
   never twice in one. The subject/body templates are snapshotted at first enqueue; later edits
   to the files do not change a queued campaign. Re-enqueueing with a different template is refused

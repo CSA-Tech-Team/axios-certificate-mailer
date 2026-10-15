@@ -13,8 +13,8 @@ from mailqueue.config import Config
 from mailqueue.message import build_message
 from mailqueue.store import Store
 
-ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE = ROOT / "templates" / "thank-you.hbs"
+SUBJECT = "Your AXIOS '26 Certificate of Participation"
+TEMPLATE_HTML = '<img src="cid:banner" alt="banner">\n<p>Hello {{name}},</p>\n<p>Your certificate is attached.</p>\n'
 
 
 def tiny_png() -> bytes:
@@ -33,13 +33,15 @@ class BannerTemplateTests(unittest.TestCase):
         self.data = str(self.dir / "data")
         self.png = self.dir / "banner.png"
         self.png.write_bytes(tiny_png())
-        (self.dir / "r.csv").write_text("email\na@x.com\nb@x.com\n", encoding="utf-8")
+        (self.dir / "r.csv").write_text("name,email\nAarav Kumar,a@x.com\nPriya S,b@x.com\n", encoding="utf-8")
+        self.template = self.dir / "banner.hbs"
+        self.template.write_text(TEMPLATE_HTML, encoding="utf-8")
 
     def cli(self, *extra):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             code = main(["--data-dir", self.data, "enqueue", "--campaign", "axios", "--csv", str(self.dir / "r.csv"),
-                         "--subject", "Thank you for registering in Axios'26", "--template", str(TEMPLATE), *extra])
+                         "--subject", SUBJECT, "--template", str(self.template), *extra])
         return code, out.getvalue(), err.getvalue()
 
     def test_needs_banner_when_template_uses_cid(self):
@@ -53,7 +55,7 @@ class BannerTemplateTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("--banner", err)
 
-    def test_end_to_end_message_has_banner_and_two_lines(self):
+    def test_end_to_end_message_has_banner(self):
         code, out, err = self.cli("--banner", str(self.png))
         self.assertEqual(code, 0, err)
         self.assertIn("newly enqueued: 2", out)
@@ -62,11 +64,11 @@ class BannerTemplateTests(unittest.TestCase):
             camp = store.campaign_by_name("axios")
             self.assertEqual(bytes(camp["banner"]), self.png.read_bytes())
             row = store.unsent_rows()[0]
-            msg = build_message(Config(), camp, {"email": "a@x.com"}, row["email_norm"])
+            msg = build_message(Config(), camp, {"name": "Aarav Kumar", "email": "a@x.com"}, row["email_norm"])
         finally:
             store.close()
         parsed = email.message_from_bytes(msg.as_bytes(), policy=policy.default)
-        self.assertEqual(parsed["Subject"], "Thank you for registering in Axios'26")
+        self.assertEqual(parsed["Subject"], SUBJECT)
         self.assertEqual(parsed.get_content_type(), "multipart/alternative")
         related = parsed.get_body(("related",)) or [p for p in parsed.walk() if p.get_content_type() == "multipart/related"][0]
         images = [p for p in parsed.walk() if p.get_content_maintype() == "image"]
@@ -77,8 +79,7 @@ class BannerTemplateTests(unittest.TestCase):
         self.assertIn('src="cid:banner"', html)
         text = parsed.get_body(("plain",)).get_content()
         lines = [ln for ln in text.splitlines() if ln.strip()]
-        self.assertEqual(lines[0], "Thank you for registering in Axios'26.")
-        self.assertEqual(len(lines), 3)  # two lines of copy + footer label
+        self.assertEqual(lines, ["Hello Aarav Kumar,", "Your certificate is attached."])
         self.assertNotIn("{{", html)
 
     def test_changing_banner_counts_as_template_change(self):
