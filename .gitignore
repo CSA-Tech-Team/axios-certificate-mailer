@@ -8,3 +8,4 @@ send-log.csv
 *.pyc
 __pycache__/
 .venv/
+preview/
