@@ -66,7 +66,8 @@ def build_email(test, subject, html_template, text_template, row):
 def assert_axios_layout(test, html):
     """The layout from mail-templates/emails/*.tsx survives conversion."""
     for piece in ('src="https://public.amcspsgtech.in/content/axios.png"', "content/bg.png",
-                  'href="https://www.instagram.com/axios.psgtech"', "content/linktree-icon.png",
+                  'href="https://www.instagram.com/axios.psgtech"', 'href="https://linktr.ee/techteam.csa"',
+                  'href="https://axios.psgtech.ac.in"', "content/linktree-icon.png",
                   'bgcolor="#1b1b1b"', "Copyright © 2024, Computational Sciences Association"):
         test.assertIn(piece, html)
     test.assertNotIn("{{", html)
