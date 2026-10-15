@@ -155,9 +155,16 @@ python -m mailqueue status [--campaign march]
   - `certificate.hbs` is `dist/index.html` with `value="{{name}}"` and `value="{{college}}"` on the two
     fields. It uses the existing `dist/styles.css`, `dist/script.js` (auto-fit) and `dist/assets/`, so the
     design is unchanged; render it into a folder beside `dist/` so the `../dist/` paths resolve.
-  - `email.hbs` / `email-text.hbs` are `certificate_mailer.py`'s default email body (`{name}` → `{{name}}`).
-    The CSV needs a `name` column. mailqueue does not attach files, so the certificate PDF is not sent by
-    this path.
+  - `email.hbs` is the AXIOS email layout from `mail-templates/emails/basic-axios-mail.tsx` (rendered by
+    React Email) carrying `certificate_mailer.py`'s default message; `email-text.hbs` is that message as
+    plain text (`{name}` → `{{name}}`). The CSV needs a `name` column. mailqueue does not attach files, so
+    the certificate PDF is not sent by this path.
+  - `otp-mail.hbs` / `otp-mail-text.hbs` are `mail-templates/emails/otp-mail.tsx` with the code as `{{otp}}`
+    (needs an `otp` column).
+  - The AXIOS layouts load their logo, background and social icons from `public.amcspsgtech.in`; a solid
+    `#1b1b1b` fallback keeps the white text readable when a client blocks remote images.
+- **`mail-templates/`** is the merged `axios-mail-templates` React Email project (source of the layouts
+  above). To regenerate HTML after editing a `.tsx`: `cd mail-templates && yarn && yarn dev`.
 - **Campaigns.** The key is `(campaign, email)`: the same person can be in a later campaign,
   never twice in one. The subject/body templates are snapshotted at first enqueue; later edits
   to the files do not change a queued campaign. Re-enqueueing with a different template is refused
