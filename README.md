@@ -102,3 +102,107 @@ Useful options:
 ```
 
 A custom body file may use `{name}`, `{college}`, and `{email}` placeholders.
+
+## mailqueue — resumable bulk email sender
+
+**This is the single supported tool for bulk sending from techteam.csa@psgtech.ac.in.**
+Its SQLite queue is the single source of truth for send history. There is no other
+supported send path: do not send campaigns from any other script, mail-merge or the
+Gmail UI, or the history (and the ~2,000/day quota accounting) will be wrong.
+If an older standalone send script exists on your machine, first run
+`import-history` with the addresses it already mailed, then delete it.
+
+Python 3.10+, standard library only.
+
+### Setup
+
+```
+set MAILQ_SMTP_PASSWORD=<google app password>      (PowerShell: $env:MAILQ_SMTP_PASSWORD="...")
+```
+
+Keep the data directory **outside OneDrive** (SQLite files can corrupt or lock in synced
+folders). Default: `%LOCALAPPDATA%\mail-queue`. Override with `--data-dir` or `MAILQ_DATA_DIR`.
+The directory holds `queue.db`, `send.lock`, `logs/mailq.log` (rotating) and `rejects/`; it contains
+recipients' personal data, so never commit it.
+
+Any setting can be overridden by `MAILQ_<NAME>` env vars or a JSON file (`--config`): `daily_cap`
+(1800), `rate_per_sec` (0.5), `max_attempts` (5), `breaker_n` (10), `cooldown_s` (900),
+`max_rate_pauses` (3), `retry_wait_limit_s` (1800), `csv_threshold` (5000), `timezone`
+(Asia/Kolkata), `email_column` (email), `delimiter` (`,`), `from_name`, `reply_to`, `list_unsubscribe`.
+The password is only ever read from the environment.
+
+### Workflow
+
+```
+python -m mailqueue enqueue --campaign march --csv people.csv --subject "Hi {{name}}" --template templates/thank-you.hbs --banner banner.png [--text-template email-text.hbs]
+python -m mailqueue send --dry-run                     # render everything, send nothing
+python -m mailqueue send --test-to you@psgtech.ac.in   # one real sample; queue untouched
+python -m mailqueue send [--campaign march] [--limit N]
+python -m mailqueue status [--campaign march]
+```
+
+- **Templates are Handlebars `.hbs` files.** `--template email.hbs` is the HTML body. Supported syntax:
+  `{{name}}` (HTML-escaped), `{{{name}}}` or `{{&name}}` (raw, e.g. a link column), `{{[first name]}}`
+  for columns with spaces, and `{{! comments }}`. Block helpers (`{{#if}}`, `{{#each}}`), partials and
+  helper calls are **not supported** and make `enqueue` fail with an error. The plain-text version is
+  derived from the HTML unless you pass `--text-template plain.hbs`. The subject (`--subject`) is a plain
+  string that can use the same `{{tags}}`.
+- **Banner image.** The banner is supplied separately: `--banner banner.png` (png/jpg/gif) embeds it in
+  the email, and the template shows it with `<img src="cid:banner">`. It is snapshotted with the template
+  (changing it later needs `--allow-template-change`). `enqueue` refuses a template that uses `cid:banner`
+  without `--banner`. Nothing needs to be hosted online. `templates/thank-you.hbs` is a ready example
+  (banner on top, two lines of copy: edit them where marked LINE 1 / LINE 2).
+- **Campaigns.** The key is `(campaign, email)`: the same person can be in a later campaign,
+  never twice in one. The subject/body templates are snapshotted at first enqueue; later edits
+  to the files do not change a queued campaign. Re-enqueueing with a different template is refused
+  unless `--allow-template-change`.
+- **Enqueue is idempotent** and never touches rows already queued (any status). It can run while
+  `send` is active; new rows are added as `pending` and may be picked up by the running sender.
+- **CSV rules.** UTF-8 (BOM ok). Blank rows (including all-empty-cell rows) are skipped. Header must
+  have no duplicate (case-insensitive), empty or padded names. The email column and `{{tags}}`
+  match columns case-insensitively and ignore surrounding whitespace (`{{ Name }}` = `name`). Every tag must
+  have a column or the whole run fails before anything is queued. More than 5,000 rows needs `--yes`.
+- **Rejected rows** go to `rejects/rejects-<campaign>-<time>.csv` with record number, line and reason:
+  wrong field count, empty/malformed email (Unicode/IDN accepted), several addresses or
+  `Name <a@b>` in one cell, empty value for a tag, line break in a subject value, duplicates.
+- **Duplicates.** Emails are normalized (trim, NFC, lowercase, IDN to punycode). The first *valid*
+  occurrence wins; later ones are rejected as `duplicate of line N` even if other columns differ.
+
+### Row states
+
+`pending -> sending -> sent`, or `sending -> retry_pending` (backoff + jitter) `-> dead` after
+`max_attempts`. A permanent recipient error (e.g. `550 5.1.1 user unknown`) goes straight to `dead`.
+
+Run-wide conditions stop or pause the run instead of killing rows:
+
+| Condition | Behaviour |
+|---|---|
+| Auth failure (535/534/530) | stop, exit 3, row returned without using an attempt |
+| Provider quota (`5.4.5`), account block | stop; quota pins today as done; exit 0 / 5 |
+| Rate limit (421-style) | pause *all* sending for `cooldown_s`; abort after `max_rate_pauses` |
+| Dropped connection / TLS error | reconnect, continue with next row |
+| N consecutive transient failures | circuit breaker, exit 8 (bad addresses do not count) |
+| Unrecognized 5xx | halt, exit 6 |
+| Daily cap reached | stop cleanly, exit 0; remaining rows wait for tomorrow |
+
+If `send` is killed, rows stuck in `sending` are reset to `retry_pending` on the next start and
+flagged **possible_duplicate** (the server may have accepted the message before the crash). `status`
+shows the count; the log names each row.
+
+### Dead rows
+
+The system never revives a `dead` row by itself. Resetting one is a deliberate operator action:
+
+```
+python -m mailqueue requeue --campaign march --email a@x.com      # or --all-dead
+```
+
+### Exit codes
+
+0 ok/finished/cap reached · 2 bad input or config · 3 auth · 4 database/IO error · 5 account blocked ·
+6 unknown 5xx · 7 repeated throttling · 8 circuit breaker · 9 another sender is running · 130 interrupted.
+
+### Tests
+
+`python -m unittest discover -s tests -t .` (uses a fake SMTP transport; no network).
+Before the first real campaign, run `send --test-to` once: the real Gmail transport is not covered by tests.
